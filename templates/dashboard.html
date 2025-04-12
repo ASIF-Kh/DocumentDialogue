@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - DocuChat{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-tachometer-alt me-2"></i>Document Dashboard</h2>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                <i class="fas fa-file-upload me-2"></i>Upload Document
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Document List -->
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card shadow">
+            <div class="card-header bg-dark">
+                <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>My Documents</h5>
+            </div>
+            <div class="card-body">
+                {% if documents %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Document Name</th>
+                                    <th>Type</th>
+                                    <th>Size</th>
+                                    <th>Uploaded</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for document in documents %}
+                                <tr>
+                                    <td>{{ document.original_filename }}</td>
+                                    <td>
+                                        {% if document.file_type == 'pdf' %}
+                                            <span class="badge bg-danger">PDF</span>
+                                        {% elif document.file_type == 'docx' %}
+                                            <span class="badge bg-primary">DOCX</span>
+                                        {% elif document.file_type == 'txt' %}
+                                            <span class="badge bg-secondary">TXT</span>
+                                        {% else %}
+                                            <span class="badge bg-info">{{ document.file_type }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ (document.file_size / 1024)|round(1) }} KB</td>
+                                    <td>{{ document.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        {% if document.processed %}
+                                            <span class="badge bg-success">Processed</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Processing</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if document.processed %}
+                                            <a href="{{ url_for('document.start_chat', document_id=document.id) }}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-comments me-1"></i>Chat
+                                            </a>
+                                        {% else %}
+                                            <button class="btn btn-sm btn-primary" disabled>
+                                                <i class="fas fa-spinner fa-spin me-1"></i>Processing
+                                            </button>
+                                        {% endif %}
+                                        
+                                        <button class="btn btn-sm btn-danger" 
+                                                onclick="confirmDelete({{ document.id }}, '{{ document.original_filename }}')">
+                                            <i class="fas fa-trash me-1"></i>Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-file-upload fa-4x mb-3 text-muted"></i>
+                        <h5>No documents uploaded yet</h5>
+                        <p class="text-muted">Upload your first document to start chatting</p>
+                        <button class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                            <i class="fas fa-file-upload me-2"></i>Upload Document
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadModalLabel">Upload Document</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('document.upload_document') }}" enctype="multipart/form-data">
+                <div class="modal-body">
+                    {{ upload_form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        <label for="{{ upload_form.document.id }}" class="form-label">Select Document</label>
+                        {{ upload_form.document(class="form-control") }}
+                        <div class="form-text">
+                            Supported formats: PDF, DOCX, TXT. Maximum size: 16MB.
+                        </div>
+                        {% if upload_form.document.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in upload_form.document.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    {{ upload_form.submit(class="btn btn-primary") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <span id="documentName" class="fw-bold"></span>?</p>
+                <p class="text-danger">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST">
+                    <button type="submit" class="btn btn-danger">Delete Document</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/document.js') }}"></script>
+{% endblock %}

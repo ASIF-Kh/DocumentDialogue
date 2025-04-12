@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+
+{% block title %}DocuChat - Chat with your Documents{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row align-items-center justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="py-5">
+                <h1 class="display-4">Welcome to DocuChat</h1>
+                <p class="lead mt-3">Upload your documents and chat with them using AI</p>
+                
+                <div class="features mt-5">
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <div class="feature-box p-3">
+                                <i class="fas fa-file-upload fa-3x mb-3 text-info"></i>
+                                <h5>Upload Documents</h5>
+                                <p class="text-muted">Support for PDF, TXT, and DOCX files</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="feature-box p-3">
+                                <i class="fas fa-robot fa-3x mb-3 text-info"></i>
+                                <h5>AI Powered</h5>
+                                <p class="text-muted">Powered by advanced AI models</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="feature-box p-3">
+                                <i class="fas fa-comments fa-3x mb-3 text-info"></i>
+                                <h5>Interactive Chat</h5>
+                                <p class="text-muted">Get answers from your documents</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="cta mt-5">
+                    {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('document.dashboard') }}" class="btn btn-lg btn-primary">
+                            <i class="fas fa-tachometer-alt me-2"></i>Go to Dashboard
+                        </a>
+                    {% else %}
+                        <div class="d-grid gap-2 d-md-block">
+                            <a href="{{ url_for('auth.login') }}" class="btn btn-lg btn-primary me-md-2">
+                                <i class="fas fa-sign-in-alt me-2"></i>Login
+                            </a>
+                            <a href="{{ url_for('auth.register') }}" class="btn btn-lg btn-outline-secondary">
+                                <i class="fas fa-user-plus me-2"></i>Register
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <div class="chat-demo">
+                        <div class="message-container">
+                            <div class="message user-message">
+                                <div class="message-content">
+                                    <p>Can you summarize the project proposal?</p>
+                                </div>
+                            </div>
+                            <div class="message bot-message">
+                                <div class="message-content">
+                                    <p>Based on your project proposal document, the key points are:</p>
+                                    <ul>
+                                        <li>12-month timeline with 3 major milestones</li>
+                                        <li>$250,000 budget with quarterly review cycles</li>
+                                        <li>Team of 5 developers and 2 designers</li>
+                                        <li>Stakeholder reviews scheduled monthly</li>
+                                    </ul>
+                                    <p>The main objectives focus on improving customer engagement by 25% and reducing processing time by 40%.</p>
+                                </div>
+                            </div>
+                            <div class="message user-message">
+                                <div class="message-content">
+                                    <p>Who is the project manager?</p>
+                                </div>
+                            </div>
+                            <div class="message bot-message">
+                                <div class="message-content">
+                                    <p>According to the document, Sarah Johnson is assigned as the project manager with 8 years of experience in similar implementations.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
