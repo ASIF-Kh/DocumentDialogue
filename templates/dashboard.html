@@ -7,9 +7,14 @@
     <div class="col-lg-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2><i class="fas fa-tachometer-alt me-2"></i>Document Dashboard</h2>
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
-                <i class="fas fa-file-upload me-2"></i>Upload Document
-            </button>
+            <div class="btn-group">
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                    <i class="fas fa-file-upload me-2"></i>Upload Documents
+                </button>
+                <button type="button" class="btn btn-success" id="createGroupChatBtn" {% if documents|length < 2 %}disabled{% endif %}>
+                    <i class="fas fa-comments me-2"></i>Create Multi-Document Chat
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -100,7 +105,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="uploadModalLabel">Upload Document</h5>
+                <h5 class="modal-title" id="uploadModalLabel">Upload Documents</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="POST" action="{{ url_for('document.upload_document') }}" enctype="multipart/form-data">
@@ -108,10 +113,13 @@
                     {{ upload_form.hidden_tag() }}
                     
                     <div class="mb-3">
-                        <label for="{{ upload_form.document.id }}" class="form-label">Select Document</label>
+                        <label for="{{ upload_form.document.id }}" class="form-label">Select Document(s)</label>
                         {{ upload_form.document(class="form-control") }}
                         <div class="form-text">
-                            Supported formats: PDF, DOCX, TXT. Maximum size: 16MB.
+                            <i class="fas fa-info-circle me-1"></i> You can select multiple files by holding Ctrl (or Cmd on Mac) while selecting.
+                        </div>
+                        <div class="form-text">
+                            Supported formats: PDF, DOCX, TXT. Maximum size: 16MB per file.
                         </div>
                         {% if upload_form.document.errors %}
                             <div class="invalid-feedback d-block">
@@ -152,8 +160,145 @@
         </div>
     </div>
 </div>
+
+<!-- Group Chat Creation Modal -->
+<div class="modal fade" id="groupChatModal" tabindex="-1" aria-labelledby="groupChatModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="groupChatModalLabel">Create Multi-Document Chat</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="groupChatForm" method="POST" action="{{ url_for('document.create_group_chat') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="groupChatName" class="form-label">Chat Name</label>
+                        <input type="text" class="form-control" id="groupChatName" name="name" required placeholder="Enter a name for this chat">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Select Documents (min 2)</label>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 50px;"><input type="checkbox" id="selectAllDocs" class="form-check-input"></th>
+                                        <th>Document</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for document in documents %}
+                                        {% if document.processed %}
+                                        <tr>
+                                            <td>
+                                                <input type="checkbox" name="document_ids" value="{{ document.id }}" class="form-check-input doc-checkbox">
+                                            </td>
+                                            <td>{{ document.original_filename }}</td>
+                                            <td>
+                                                {% if document.file_type == 'pdf' %}
+                                                    <span class="badge bg-danger">PDF</span>
+                                                {% elif document.file_type == 'docx' %}
+                                                    <span class="badge bg-primary">DOCX</span>
+                                                {% elif document.file_type == 'txt' %}
+                                                    <span class="badge bg-secondary">TXT</span>
+                                                {% else %}
+                                                    <span class="badge bg-info">{{ document.file_type }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-success">Processed</span>
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success" id="createGroupChatSubmit" disabled>
+                        <i class="fas fa-comments me-2"></i>Create Chat
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/document.js') }}"></script>
+<script>
+    // Group chat modal functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const createGroupChatBtn = document.getElementById('createGroupChatBtn');
+        const groupChatModal = new bootstrap.Modal(document.getElementById('groupChatModal'));
+        const docCheckboxes = document.querySelectorAll('.doc-checkbox');
+        const selectAllDocs = document.getElementById('selectAllDocs');
+        const createGroupChatSubmit = document.getElementById('createGroupChatSubmit');
+        const groupChatForm = document.getElementById('groupChatForm');
+        
+        // Open group chat modal
+        if (createGroupChatBtn) {
+            createGroupChatBtn.addEventListener('click', function() {
+                groupChatModal.show();
+            });
+        }
+        
+        // Select all documents checkbox
+        if (selectAllDocs) {
+            selectAllDocs.addEventListener('change', function() {
+                docCheckboxes.forEach(checkbox => {
+                    checkbox.checked = selectAllDocs.checked;
+                });
+                updateCreateButtonState();
+            });
+        }
+        
+        // Individual document checkboxes
+        docCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                updateCreateButtonState();
+                
+                // Update select all checkbox
+                const allChecked = Array.from(docCheckboxes).every(cb => cb.checked);
+                const noneChecked = Array.from(docCheckboxes).every(cb => !cb.checked);
+                
+                if (selectAllDocs) {
+                    selectAllDocs.checked = allChecked;
+                    selectAllDocs.indeterminate = !allChecked && !noneChecked;
+                }
+            });
+        });
+        
+        // Form validation
+        if (groupChatForm) {
+            groupChatForm.addEventListener('submit', function(e) {
+                const selectedDocs = document.querySelectorAll('.doc-checkbox:checked');
+                if (selectedDocs.length < 2) {
+                    e.preventDefault();
+                    alert('Please select at least 2 documents for a multi-document chat.');
+                }
+                
+                const chatName = document.getElementById('groupChatName').value.trim();
+                if (!chatName) {
+                    e.preventDefault();
+                    alert('Please enter a name for the chat.');
+                }
+            });
+        }
+        
+        // Enable/disable create button based on selection
+        function updateCreateButtonState() {
+            const selectedCount = document.querySelectorAll('.doc-checkbox:checked').length;
+            if (createGroupChatSubmit) {
+                createGroupChatSubmit.disabled = selectedCount < 2;
+            }
+        }
+    });
+</script>
 {% endblock %}

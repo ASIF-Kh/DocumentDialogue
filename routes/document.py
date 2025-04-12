@@ -10,7 +10,7 @@ from flask_wtf.file import FileField, FileRequired, FileAllowed
 from wtforms import SubmitField
 
 from app import db
-from models import Document, ChatSession
+from models import Document, ChatSession, GroupChatSession
 from utils.document_processor import allowed_file, save_uploaded_file, process_document
 from config import ALLOWED_EXTENSIONS
 
@@ -18,11 +18,11 @@ document_bp = Blueprint('document', __name__)
 
 # Document Upload Form
 class DocumentUploadForm(FlaskForm):
-    document = FileField('Document', validators=[
+    document = FileField('Document(s)', validators=[
         FileRequired(),
         FileAllowed(list(ALLOWED_EXTENSIONS), f'Only {", ".join(ALLOWED_EXTENSIONS)} files are allowed')
-    ])
-    submit = SubmitField('Upload')
+    ], render_kw={"multiple": True})
+    submit = SubmitField('Upload Files')
 
 @document_bp.route('/dashboard')
 @login_required
@@ -41,42 +41,51 @@ def upload_document():
     form = DocumentUploadForm()
     
     if form.validate_on_submit():
-        file = form.document.data
+        files = request.files.getlist('document')
         
-        if file and allowed_file(file.filename):
-            # Save the file and get metadata
-            file_data = save_uploaded_file(file, current_user.id)
-            
-            if file_data:
-                # Create document record in database
-                document = Document(
-                    user_id=current_user.id,
-                    filename=file_data['filename'],
-                    original_filename=file_data['original_filename'],
-                    file_path=file_data['file_path'],
-                    file_type=file_data['file_type'],
-                    file_size=file_data['file_size'],
-                    processed=False
-                )
+        if not files:
+            flash('No files selected.', 'danger')
+            return redirect(url_for('document.dashboard'))
+        
+        successful_uploads = 0
+        for file in files:
+            if file and allowed_file(file.filename):
+                # Save the file and get metadata
+                file_data = save_uploaded_file(file, current_user.id)
                 
-                db.session.add(document)
-                db.session.commit()
-                
-                # Process document in background (simplified, consider using Celery in production)
-                success = process_document(document)
-                
-                if success:
-                    document.processed = True
+                if file_data:
+                    # Create document record in database
+                    document = Document(
+                        user_id=current_user.id,
+                        filename=file_data['filename'],
+                        original_filename=file_data['original_filename'],
+                        file_path=file_data['file_path'],
+                        file_type=file_data['file_type'],
+                        file_size=file_data['file_size'],
+                        processed=False
+                    )
+                    
+                    db.session.add(document)
                     db.session.commit()
-                    flash(f'Document "{file_data["original_filename"]}" uploaded and processed successfully!', 'success')
+                    
+                    # Process document in background (simplified, consider using Celery in production)
+                    success = process_document(document)
+                    
+                    if success:
+                        document.processed = True
+                        db.session.commit()
+                        successful_uploads += 1
+                    else:
+                        flash(f'Document "{file_data["original_filename"]}" uploaded but processing failed.', 'warning')
                 else:
-                    flash(f'Document uploaded but processing failed. Please try again later.', 'warning')
-                
-                return redirect(url_for('document.dashboard'))
+                    flash(f'Error saving file "{file.filename}". Please try again.', 'danger')
             else:
-                flash('Error saving file. Please try again.', 'danger')
-        else:
-            flash(f'Invalid file type. Allowed types: {", ".join(ALLOWED_EXTENSIONS)}', 'danger')
+                flash(f'Invalid file type: {file.filename}. Allowed types: {", ".join(ALLOWED_EXTENSIONS)}', 'danger')
+        
+        if successful_uploads > 0:
+            flash(f'{successful_uploads} document(s) uploaded and processed successfully!', 'success')
+            
+        return redirect(url_for('document.dashboard'))
     
     # If validation fails or other errors occur
     for field, errors in form.errors.items():
@@ -129,3 +138,50 @@ def start_chat(document_id):
         db.session.commit()
     
     return redirect(url_for('chat.chat_view', chat_id=chat_session.id))
+
+@document_bp.route('/create_group_chat', methods=['POST'])
+@login_required
+def create_group_chat():
+    # Get form data
+    name = request.form.get('name', '').strip()
+    document_ids = request.form.getlist('document_ids')
+    
+    # Validate inputs
+    if not name:
+        flash('Please provide a name for the chat.', 'danger')
+        return redirect(url_for('document.dashboard'))
+    
+    if len(document_ids) < 2:
+        flash('Please select at least 2 documents for a multi-document chat.', 'danger')
+        return redirect(url_for('document.dashboard'))
+    
+    # Get the document objects and verify they belong to the user and are processed
+    documents = []
+    for doc_id in document_ids:
+        document = Document.query.filter_by(
+            id=doc_id, 
+            user_id=current_user.id,
+            processed=True
+        ).first()
+        
+        if document:
+            documents.append(document)
+    
+    if len(documents) < 2:
+        flash('Could not find enough valid documents. Please try again.', 'danger')
+        return redirect(url_for('document.dashboard'))
+    
+    # Create a new group chat session
+    group_chat = GroupChatSession(
+        user_id=current_user.id,
+        name=name
+    )
+    
+    # Add documents to the group chat
+    group_chat.documents = documents
+    
+    db.session.add(group_chat)
+    db.session.commit()
+    
+    flash(f'Multi-document chat "{name}" created successfully!', 'success')
+    return redirect(url_for('chat.group_chat_view', group_chat_id=group_chat.id))
