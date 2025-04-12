@@ -26,6 +26,14 @@ def nl2br_filter(text):
     if text:
         return Markup(text.replace('\n', '<br>'))
 
+# Add datetime functions to templates
+@app.context_processor
+def utility_processor():
+    from datetime import datetime
+    return {
+        'now': datetime.now
+    }
+
 # Configure the database
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///docuchat.db")
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
