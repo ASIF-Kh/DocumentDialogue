@@ -1,5 +1,7 @@
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
 # OpenAI settings
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "your-openai-api-key")
 OPENAI_MODEL = "gpt-4o"  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
