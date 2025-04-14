@@ -30,10 +30,13 @@ def dashboard():
     # Get all documents for the current user
     documents = Document.query.filter_by(user_id=current_user.id).order_by(Document.uploaded_at.desc()).all()
     
+    # Get all group chats for the current user
+    group_chats = GroupChatSession.query.filter_by(user_id=current_user.id).order_by(GroupChatSession.last_active.desc()).all()
+
     # Create document upload form
     upload_form = DocumentUploadForm()
     
-    return render_template('dashboard.html', documents=documents, upload_form=upload_form)
+    return render_template('dashboard.html', documents=documents,group_chats=group_chats,upload_form=upload_form)
 
 @document_bp.route('/upload', methods=['POST'])
 @login_required
@@ -185,3 +188,22 @@ def create_group_chat():
     
     flash(f'Multi-document chat "{name}" created successfully!', 'success')
     return redirect(url_for('chat.group_chat_view', group_chat_id=group_chat.id))
+
+@document_bp.route('/delete_group_chat/<int:group_chat_id>', methods=['POST'])
+@login_required
+def delete_group_chat(group_chat_id):
+    # Verify user owns this group chat
+    group_chat = GroupChatSession.query.filter_by(
+        id=group_chat_id, 
+        user_id=current_user.id
+    ).first_or_404()
+    
+    # Get the chat name for flash message
+    chat_name = group_chat.name
+    
+    # Delete the group chat (cascade will delete associated messages)
+    db.session.delete(group_chat)
+    db.session.commit()
+    
+    flash(f'Multi-document chat "{chat_name}" deleted successfully!', 'success')
+    return redirect(url_for('document.dashboard'))

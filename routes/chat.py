@@ -95,6 +95,8 @@ def send_message():
         response_data = generate_answer(
             query=message_text,
             document_id=document.id,
+            document_path = document.file_path,
+            document_type = document.file_type,
             user_id=current_user.id,
             chat_history=chat_history[:-1]  # Exclude the just-added user message
         )

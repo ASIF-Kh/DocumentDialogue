@@ -41,6 +41,8 @@ class Document(db.Model):
     file_size = db.Column(db.Integer, nullable=False)  # in bytes
     processed = db.Column(db.Boolean, default=False)
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    extracted_text = db.Column(db.Text, nullable=True)
     
     # Relationships
     chat_sessions = db.relationship('ChatSession', backref='document', lazy='dynamic', cascade='all, delete-orphan')

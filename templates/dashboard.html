@@ -100,6 +100,85 @@
     </div>
 </div>
 
+<!-- Group Chat List -->
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card shadow">
+            <div class="card-header bg-dark">
+                <h5 class="mb-0"><i class="fas fa-layer-group me-2"></i>Multi-Document Chats</h5>
+            </div>
+            <div class="card-body">
+                {% if group_chats %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Chat Name</th>
+                                    <th>Documents</th>
+                                    <th>Created</th>
+                                    <th>Last Active</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for chat in group_chats %}
+                                <tr>
+                                    <td>{{ chat.name }}</td>
+                                    <td>
+                                        <div style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                            {% for doc in chat.documents %}
+                                                {% if doc.file_type == 'pdf' %}
+                                                    <span class="badge bg-danger me-1">
+                                                        <i class="fas fa-file-pdf me-1"></i>{{ doc.original_filename }}
+                                                    </span>
+                                                {% elif doc.file_type == 'docx' %}
+                                                    <span class="badge bg-primary me-1">
+                                                        <i class="fas fa-file-word me-1"></i>{{ doc.original_filename }}
+                                                    </span>
+                                                {% elif doc.file_type == 'txt' %}
+                                                    <span class="badge bg-secondary me-1">
+                                                        <i class="fas fa-file-alt me-1"></i>{{ doc.original_filename }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-info me-1">
+                                                        <i class="fas fa-file me-1"></i>{{ doc.original_filename }}
+                                                    </span>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </td>
+                                    <td>{{ chat.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>{{ chat.last_active.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        <a href="{{ url_for('chat.group_chat_view', group_chat_id=chat.id) }}" class="btn btn-sm btn-success">
+                                            <i class="fas fa-comments me-1"></i>Open Chat
+                                        </a>
+                                        <button class="btn btn-sm btn-danger" 
+                                                onclick="confirmDeleteGroupChat({{ chat.id }}, '{{ chat.name }}')">
+                                            <i class="fas fa-trash me-1"></i>Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-layer-group fa-4x mb-3 text-muted"></i>
+                        <h5>No multi-document chats created yet</h5>
+                        <p class="text-muted">Create a multi-document chat to ask questions across multiple documents</p>
+                        <button class="btn btn-success mt-3" id="emptyCreateGroupChatBtn" {% if documents|length < 2 %}disabled{% endif %}>
+                            <i class="fas fa-comments me-2"></i>Create Multi-Document Chat
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+
 <!-- Upload Modal -->
 <div class="modal fade" id="uploadModal" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -228,6 +307,30 @@
         </div>
     </div>
 </div>
+
+<!-- Delete Group Chat Modal -->
+<div class="modal fade" id="deleteGroupChatModal" tabindex="-1" aria-labelledby="deleteGroupChatModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteGroupChatModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the multi-document chat <span id="groupChatName" class="fw-bold"></span>?</p>
+                <p class="text-danger">This action cannot be undone and will delete all chat history.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteGroupChatForm" method="POST">
+                    <button type="submit" class="btn btn-danger">Delete Chat</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 {% endblock %}
 
 {% block scripts %}
@@ -236,15 +339,23 @@
     // Group chat modal functionality
     document.addEventListener('DOMContentLoaded', function() {
         const createGroupChatBtn = document.getElementById('createGroupChatBtn');
+        const emptyCreateGroupChatBtn = document.getElementById('emptyCreateGroupChatBtn');
         const groupChatModal = new bootstrap.Modal(document.getElementById('groupChatModal'));
         const docCheckboxes = document.querySelectorAll('.doc-checkbox');
         const selectAllDocs = document.getElementById('selectAllDocs');
         const createGroupChatSubmit = document.getElementById('createGroupChatSubmit');
         const groupChatForm = document.getElementById('groupChatForm');
         
-        // Open group chat modal
+        // Open group chat modal from main button
         if (createGroupChatBtn) {
             createGroupChatBtn.addEventListener('click', function() {
+                groupChatModal.show();
+            });
+        }
+        
+        // Open group chat modal from empty state button
+        if (emptyCreateGroupChatBtn) {
+            emptyCreateGroupChatBtn.addEventListener('click', function() {
                 groupChatModal.show();
             });
         }

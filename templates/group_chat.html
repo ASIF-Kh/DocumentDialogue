@@ -138,7 +138,7 @@
             {% for message in messages %}
                 <div class="message {% if message.is_user %}user-message{% else %}bot-message{% endif %}">
                     <div class="message-content">
-                        {{ message.content|safe|nl2br }}
+                        {{ message.content|markdown|safe }}
                     </div>
                     <div class="message-time text-end">
                         {{ message.timestamp.strftime('%H:%M') }}

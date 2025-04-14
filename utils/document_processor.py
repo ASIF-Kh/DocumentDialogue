@@ -11,7 +11,7 @@ from langchain_community.document_loaders import (
     TextLoader, 
     Docx2txtLoader
 )
-
+from langchain_community.retrievers import BM25Retriever
 from config import UPLOAD_FOLDER, ALLOWED_EXTENSIONS, CHROMA_PERSIST_DIRECTORY, OPENAI_API_KEY
 
 logger = logging.getLogger(__name__)
@@ -44,6 +44,25 @@ def save_uploaded_file(file, user_id):
         'file_type': ext,
         'file_size': os.path.getsize(file_path)
     }
+
+
+def load_document(file_path, file_type):
+    """Load a document based on its file type"""
+    if file_type == 'pdf':
+        loader = PyPDFLoader(file_path)
+    elif file_type == 'txt':
+        loader = TextLoader(file_path)
+    elif file_type == 'docx':
+        loader = Docx2txtLoader(file_path)
+    else:
+        logger.error(f"Unsupported file type: {file_type}")
+        return None
+    
+    # Load document content
+    doc_content = loader.load()
+    
+    return doc_content
+
 
 def process_document(document):
     """Process a document and create embeddings in ChromaDB"""
@@ -117,4 +136,32 @@ def get_document_chroma(document_id, user_id):
         return db
     except Exception as e:
         logger.error(f"Error loading ChromaDB: {str(e)}")
+        return None
+    
+
+def get_bm25_retriever(document_path,document_type):
+    """Get the BM25 index for a document"""
+    try:
+        # Load the document based on its type
+        doc = load_document(document_path, document_type)
+        if not doc:
+            return None
+        # Create a text splitter
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,
+            chunk_overlap=200,
+            length_function=len,
+        )
+        # Split the document into chunks
+        docs = text_splitter.split_documents(doc)
+        
+        keyword_retriever = BM25Retriever.from_documents(docs)
+        keyword_retriever.k =  3
+
+
+        
+        
+        return keyword_retriever
+    except Exception as e:
+        logger.error(f"Error loading BM25 index: {str(e)}")
         return None

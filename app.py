@@ -3,10 +3,11 @@ import logging
 from flask import Flask
 from markupsafe import Markup
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from sqlalchemy.orm import DeclarativeBase
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_login import LoginManager
-
+import markdown
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 
@@ -14,9 +15,9 @@ class Base(DeclarativeBase):
     pass
 
 db = SQLAlchemy(model_class=Base)
-
 # Create the Flask app
 app = Flask(__name__)
+migrate = Migrate(app, db)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
@@ -25,6 +26,13 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 def nl2br_filter(text):
     if text:
         return Markup(text.replace('\n', '<br>'))
+    
+# Register 'markdown' as a custom Jinja2 filter
+@app.template_filter('markdown')
+def markdown_filter(text):
+    return markdown.markdown(text)
+
+
 
 # Add datetime functions to templates
 @app.context_processor
