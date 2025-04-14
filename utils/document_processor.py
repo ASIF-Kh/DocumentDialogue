@@ -165,3 +165,23 @@ def get_bm25_retriever(document_path,document_type):
     except Exception as e:
         logger.error(f"Error loading BM25 index: {str(e)}")
         return None
+
+def delete_document_embeddings(collection_name):
+    """Delete a document collection from ChromaDB"""
+    try:
+        embeddings = OpenAIEmbeddings()
+        
+        # Load the collection
+        vectorstore = Chroma(
+            persist_directory=CHROMA_PERSIST_DIRECTORY,
+            embedding_function=embeddings,
+            collection_name=collection_name
+        )
+        
+        # Delete the collection
+        vectorstore.delete_collection()
+        
+        return True
+    except Exception as e:
+        logger.error(f"Error deleting document embeddings: {e}")
+        return False

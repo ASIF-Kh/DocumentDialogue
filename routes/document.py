@@ -11,7 +11,7 @@ from wtforms import SubmitField
 
 from app import db
 from models import Document, ChatSession, GroupChatSession
-from utils.document_processor import allowed_file, save_uploaded_file, process_document
+from utils.document_processor import allowed_file, save_uploaded_file, process_document, delete_document_embeddings
 from config import ALLOWED_EXTENSIONS
 
 document_bp = Blueprint('document', __name__)
@@ -106,6 +106,9 @@ def delete_document(document_id):
     try:
         if os.path.exists(document.file_path):
             os.remove(document.file_path)
+        
+        collection_name = f"user_{document.user_id}_doc_{document.id}"
+        delete_document_embeddings(collection_name)
     except Exception as e:
         current_app.logger.error(f"Error deleting file: {str(e)}")
     
