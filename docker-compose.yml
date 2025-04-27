@@ -1,0 +1,38 @@
+version: '3.11'
+
+services:
+  app:
+    build: .
+    container_name: uv_app
+    command: uv run main.py
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - chroma_data:/app/chroma_db
+      - sqlite_data:/app/instance
+      - uploads:/app/uploads
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - CHROMA_DB_PATH=/app/chroma_db
+      - SQLITE_DB_PATH=/app/instance/app.db  # adjust if your file is named differently
+
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    entrypoint: >
+      sh -c "ollama serve &
+             sleep 5 &&
+             ollama pull llama3.2:latest &&
+             wait"
+
+volumes:
+  chroma_data:
+  sqlite_data:
+  ollama_data:

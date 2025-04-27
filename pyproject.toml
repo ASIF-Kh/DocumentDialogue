@@ -24,6 +24,7 @@ dependencies = [
     "markdown>=3.8",
     "flask-migrate>=4.1.0",
     "rank-bm25>=0.2.2",
+    "langchain-ollama>=0.3.2",
 ]
 
 [[tool.uv.index]]
@@ -1147,3 +1148,9 @@ yta-general-utils = [{ index = "pytorch-cpu", marker = "platform_system == 'Linu
 zensvi = [{ index = "pytorch-cpu", marker = "platform_system == 'Linux'" }]
 zetascale = [{ index = "pytorch-cpu", marker = "platform_system == 'Linux'" }]
 zuko = [{ index = "pytorch-cpu", marker = "platform_system == 'Linux'" }]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=6.29.5",
+    "uv>=0.6.16",
+]

@@ -4,6 +4,7 @@ from openai import OpenAI
 from langchain.chains import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferMemory
 from langchain_openai import ChatOpenAI
+from langchain_ollama import ChatOllama
 from langchain.retrievers import EnsembleRetriever
 
 from utils.document_processor import get_document_chroma,get_bm25_retriever
@@ -12,7 +13,11 @@ from config import OPENAI_API_KEY, OPENAI_MODEL, MAX_TOKEN_LIMIT
 logger = logging.getLogger(__name__)
 
 # Initialize OpenAI client
-openai_client = OpenAI(api_key=OPENAI_API_KEY)
+# openai_client = OpenAI(api_key=OPENAI_API_KEY)
+openai_client = OpenAI(
+    base_url = 'http://localhost:11434/v1',
+    api_key='ollama', # required, but unused
+)
 
 def generate_answer(query, document_id,document_path,document_type, user_id, chat_history=None):
     """Generate an answer to a user query based on document content"""
@@ -50,12 +55,16 @@ def generate_answer(query, document_id,document_path,document_type, user_id, cha
                     memory.chat_memory.add_ai_message(message["content"])
         
         # Create the conversation chain
-        llm = ChatOpenAI(
-            temperature=0,
-            model=OPENAI_MODEL,  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024
-            openai_api_key=OPENAI_API_KEY,
-            max_tokens=MAX_TOKEN_LIMIT
-        )
+        # llm = ChatOpenAI(
+        #     temperature=0,
+        #     model=OPENAI_MODEL,  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024
+        #     openai_api_key=OPENAI_API_KEY,
+        #     max_tokens=MAX_TOKEN_LIMIT
+        # )
+
+        # If using Ollama, uncomment the following line
+        llm = ChatOllama(model="llama3.2:latest", temperature=0, max_tokens=MAX_TOKEN_LIMIT)
+
         
         qa_chain = ConversationalRetrievalChain.from_llm(
             llm=llm,
@@ -154,8 +163,20 @@ Always cite your sources by document name when specific information comes from a
         user_prompt = f"{history_text}\n\nContext from multiple documents:\n{combined_context}\n\nQuestion: {query}"
         
         # Query OpenAI with the prepared prompts
+        # response = openai_client.chat.completions.create(
+        #     model=OPENAI_MODEL,  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024
+        #     messages=[
+        #         {"role": "system", "content": system_prompt},
+        #         {"role": "user", "content": user_prompt}
+        #     ],
+        #     temperature=0,
+        #     max_tokens=MAX_TOKEN_LIMIT
+        # )
+        
+
+        # If using Ollama, uncomment the following line
         response = openai_client.chat.completions.create(
-            model=OPENAI_MODEL,  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024
+            model="llama3.2:latest",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
@@ -163,7 +184,8 @@ Always cite your sources by document name when specific information comes from a
             temperature=0,
             max_tokens=MAX_TOKEN_LIMIT
         )
-        
+
+
         return {
             "answer": response.choices[0].message.content,
             "sources": sources
