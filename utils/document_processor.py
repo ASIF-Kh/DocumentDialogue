@@ -4,6 +4,7 @@ import uuid
 import logging
 from werkzeug.utils import secure_filename
 from langchain_openai import OpenAIEmbeddings
+from langchain_ollama import OllamaEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import (
@@ -15,6 +16,10 @@ from langchain_community.retrievers import BM25Retriever
 from config import UPLOAD_FOLDER, ALLOWED_EXTENSIONS, CHROMA_PERSIST_DIRECTORY, OPENAI_API_KEY
 
 logger = logging.getLogger(__name__)
+
+embeddings = OllamaEmbeddings(
+    model="nomic-embed-text:latest",
+)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -104,7 +109,7 @@ def process_document(document):
             
         # Create vector store
         collection_name = f"user_{document.user_id}_doc_{document.id}"
-        embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+        # embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
         
         # Store embeddings in ChromaDB
         Chroma.from_documents(
@@ -124,7 +129,7 @@ def get_document_chroma(document_id, user_id):
     """Get the ChromaDB collection for a document"""
     try:
         collection_name = f"user_{user_id}_doc_{document_id}"
-        embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+        # embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
         
         # Load the existing ChromaDB collection
         db = Chroma(
@@ -169,7 +174,7 @@ def get_bm25_retriever(document_path,document_type):
 def delete_document_embeddings(collection_name):
     """Delete a document collection from ChromaDB"""
     try:
-        embeddings = OpenAIEmbeddings()
+        # embeddings = OpenAIEmbeddings()
         
         # Load the collection
         vectorstore = Chroma(
